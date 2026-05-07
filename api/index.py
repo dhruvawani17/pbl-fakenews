@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from openai import OpenAI
+import httpx
 from ddgs import DDGS
 import json
 import os
@@ -20,28 +21,37 @@ app.add_middleware(
 class AnalyzeRequest(BaseModel):
     content: str
     base_url: str = "https://api.groq.com/openai/v1"
-    # Use a valid Groq model name 
     model_name: str = "llama3-8b-8192"
 
-# Removed async to prevent event loop connection errors with synchronous OpenAI client
 @app.post("/api/analyze")
 def analyze_content(req: AnalyzeRequest):
     if not req.content.strip():
         raise HTTPException(status_code=400, detail="Please enter some text to analyze.")
         
     api_key = os.environ.get("GROQ_API_KEY", "ollama")
-    client = OpenAI(base_url=req.base_url, api_key=api_key)
     
-    # Try searching DDG, but fail gracefully without killing the API
+    # Configure custom HTTP client with extended timeouts and retries for Vercel/Groq stability
+    http_client = httpx.Client(
+        timeout=httpx.Timeout(30.0, connect=10.0),
+        limits=httpx.Limits(max_connections=10),
+        transport=httpx.HTTPTransport(retries=3)
+    )
+    
+    client = OpenAI(
+        base_url=req.base_url, 
+        api_key=api_key,
+        http_client=http_client
+    )
+    
     search_query = req.content[:150].replace('\n', ' ')
     search_results = []
     
     try:
-        with DDGS() as ddgs:
-            for result in ddgs.text(search_query, max_results=5):
+        with DDGS(timeout=10) as ddgs:
+            for result in ddgs.text(search_query, max_results=3):
                 search_results.append(result)
     except Exception as e:
-        print(f"Search warning: {e}")
+        print(f"Search skipped/failed: {e}")
         
     formatted_search_context = ""
     for i, res in enumerate(search_results):
@@ -74,7 +84,6 @@ def analyze_content(req: AnalyzeRequest):
     
     try:
         response = client.chat.completions.create(
-            # Coerce the model name to a valid Groq model if the user sends an invalid one
             model="llama-3.3-70b-versatile" if req.base_url and "groq" in req.base_url else req.model_name,
             messages=[
                 {"role": "system", "content": "You are an expert fact-checking AI. Always output valid JSON only."},
@@ -100,4 +109,7 @@ def analyze_content(req: AnalyzeRequest):
         return result
     except Exception as e:
         error_msg = f"{type(e).__name__}: {str(e)}"
+        print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=error_msg)
+    finally:
+        http_client.close()
