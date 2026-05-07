@@ -2,7 +2,6 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from openai import OpenAI
-import httpx
 from ddgs import DDGS
 import json
 import os
@@ -28,28 +27,25 @@ def analyze_content(req: AnalyzeRequest):
     if not req.content.strip():
         raise HTTPException(status_code=400, detail="Please enter some text to analyze.")
         
-    api_key = os.environ.get("GROQ_API_KEY", "ollama")
+    # Ensure no hidden whitespace or newlines from Vercel env UI
+    raw_key = os.environ.get("GROQ_API_KEY", "ollama")
+    api_key = raw_key.strip()
     
-    # Configure custom HTTP client with extended timeouts and retries for Vercel/Groq stability
-    http_client = httpx.Client(
-        timeout=httpx.Timeout(30.0, connect=10.0),
-        limits=httpx.Limits(max_connections=10),
-        transport=httpx.HTTPTransport(retries=3)
-    )
-    
+    # Use default OpenAI networking which is fully Vercel compatible
     client = OpenAI(
-        base_url=req.base_url, 
+        base_url=req.base_url.strip(), 
         api_key=api_key,
-        http_client=http_client
+        timeout=25.0,
+        max_retries=2
     )
     
     search_query = req.content[:150].replace('\n', ' ')
     search_results = []
     
     try:
-        with DDGS(timeout=10) as ddgs:
-            for result in ddgs.text(search_query, max_results=3):
-                search_results.append(result)
+        ddgs = DDGS()
+        for result in ddgs.text(search_query, max_results=3):
+            search_results.append(result)
     except Exception as e:
         print(f"Search skipped/failed: {e}")
         
@@ -84,7 +80,7 @@ def analyze_content(req: AnalyzeRequest):
     
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile" if req.base_url and "groq" in req.base_url else req.model_name,
+            model="llama-3.3-70b-versatile" if req.base_url and "groq" in req.base_url else req.model_name.strip(),
             messages=[
                 {"role": "system", "content": "You are an expert fact-checking AI. Always output valid JSON only."},
                 {"role": "user", "content": prompt}
@@ -111,5 +107,3 @@ def analyze_content(req: AnalyzeRequest):
         error_msg = f"{type(e).__name__}: {str(e)}"
         print(traceback.format_exc())
         raise HTTPException(status_code=500, detail=error_msg)
-    finally:
-        http_client.close()
