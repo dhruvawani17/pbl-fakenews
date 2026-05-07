@@ -79,7 +79,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onVerify, isLoading })
                 </div>
               </div>
 
-              <div className="space-y-1">
+              {/* <div className="space-y-1">
                 <label className="font-mono text-[9px] text-slate-500 uppercase tracking-widest pl-1">YouTube URL (Verified Analysis)</label>
                 <div className="relative">
                   <Youtube className="absolute left-3 top-2.5 text-slate-600" size={14} />
@@ -91,7 +91,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onVerify, isLoading })
                     className="w-full bg-black/40 border border-slate-800 focus:border-truth-blue/50 p-2.5 pl-10 text-xs text-white placeholder:text-slate-700 outline-none rounded-sm transition-all"
                   />
                 </div>
-              </div>
+              </div> */}
 
               <div className="flex gap-3 pt-2">
                 <button 

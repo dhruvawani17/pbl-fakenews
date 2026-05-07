@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { ChevronRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export const Navigation: React.FC = () => {
   return (
@@ -18,7 +19,7 @@ export const Navigation: React.FC = () => {
       </div>
 
       <nav className="hidden lg:flex items-center gap-10 text-[11px] font-bold tracking-[0.2em] text-slate-500 uppercase">
-        <a href="#" className="text-white flex items-center gap-2 relative group">
+        <Link to="/" className="text-white flex items-center gap-2 relative group">
           <motion.div 
             className="w-1.5 h-1.5 bg-truth-orange rotate-45 hud-glow-orange"
             animate={{ scale: [1, 1.3, 1] }}
@@ -29,10 +30,10 @@ export const Navigation: React.FC = () => {
             className="absolute -bottom-1.5 left-0 w-full h-[1px] bg-truth-orange" 
             layoutId="nav-underline"
           />
-        </a>
-        <a href="#" className="hover:text-white hover:hud-glow-blue transition-all duration-300">How It Works</a>
-        <a href="#" className="hover:text-white hover:hud-glow-blue transition-all duration-300">Technology</a>
-        <a href="#" className="hover:text-white hover:hud-glow-blue transition-all duration-300">About</a>
+        </Link>
+        <Link to="/how-it-works" className="hover:text-white hover:hud-glow-blue transition-all duration-300">How It Works</Link>
+        <Link to="/technology" className="hover:text-white hover:hud-glow-blue transition-all duration-300">Technology</Link>
+        <Link to="/about" className="hover:text-white hover:hud-glow-blue transition-all duration-300">About</Link>
         <span className="tracking-widest animate-pulse">...</span>
       </nav>
 
